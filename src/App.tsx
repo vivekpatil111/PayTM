@@ -7,6 +7,7 @@ import { Navbar } from './components/layout/Navbar';
 import { Footer } from './components/layout/Footer';
 import { LandingPage } from './components/pages/LandingPage';
 import { SuccessPage } from './components/pages/SuccessPage';
+import { InsuranceAgentView } from './components/insurance/InsuranceAgentView';
 
 // Dummy data for WebUnderwriterPortal to act as a trace panel
 const RAMESH_MERCHANT = {
@@ -41,7 +42,8 @@ function App() {
   };
   
   const [showAudit, setShowAudit] = useState(false);
-  const [currentView, setCurrentView] = useState<'landing' | 'apply' | 'success'>('landing');
+  const [currentView, setCurrentView] = useState<'landing' | 'apply' | 'success' | 'insurance'>('landing');
+  const [insuranceCategory, setInsuranceCategory] = useState<string | null>(null);
 
   const handleAuditComplete = () => {
     setShowAudit(true);
@@ -52,10 +54,16 @@ function App() {
     setShowAudit(false);
   };
 
-  const handleNavigate = (view: 'landing' | 'apply' | 'success') => {
+  const handleNavigate = (view: 'landing' | 'apply' | 'success' | 'insurance', category?: string) => {
     setCurrentView(view);
-    if (view !== 'apply') {
+    if (view === 'insurance' && category) {
+      setInsuranceCategory(category);
+    } else {
+      setInsuranceCategory(null);
+    }
+    if (view !== 'apply' && view !== 'insurance') {
       setShowAudit(false);
+      setEvents([]);
     }
   };
 
@@ -69,14 +77,19 @@ function App() {
         )}
 
         {currentView === 'success' && (
-          <SuccessPage onHome={() => handleNavigate('landing')} />
+          <SuccessPage 
+            onHome={() => handleNavigate('landing')} 
+            onCrossSell={(cat) => handleNavigate('insurance', cat)}
+          />
         )}
 
-        {currentView === 'apply' && (
+        {(currentView === 'apply' || currentView === 'insurance') && (
           <div className="flex-1 p-4 md:p-8 flex flex-col lg:flex-row gap-6 max-w-7xl mx-auto w-full">
-            {/* Left Column: Form & Agent / Audit Report */}
+            {/* Left Column: Form / Insurance Agent */}
             <div className="flex-1 flex flex-col items-center justify-center min-h-[600px] relative">
-              {showAudit ? (
+              {currentView === 'insurance' ? (
+                <InsuranceAgentView onEvent={pushEvent} preselectedCategory={insuranceCategory} />
+              ) : showAudit ? (
                 <FormAuditReport onDisburse={handleApprove} />
               ) : (
                 <SaarthiFormAgent onEvent={pushEvent} onAuditComplete={handleAuditComplete} />

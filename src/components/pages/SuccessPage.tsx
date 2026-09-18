@@ -4,9 +4,10 @@ import { CheckCircle2, Copy, ExternalLink, Download } from 'lucide-react';
 
 interface SuccessPageProps {
   onHome: () => void;
+  onCrossSell?: (category: string) => void;
 }
 
-export const SuccessPage: React.FC<SuccessPageProps> = ({ onHome }) => {
+export const SuccessPage: React.FC<SuccessPageProps> = ({ onHome, onCrossSell }) => {
 
   useEffect(() => {
     // Fire confetti on mount
@@ -91,7 +92,7 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({ onHome }) => {
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row gap-4 mb-8">
             <button 
               className="flex-1 bg-white border border-slate-200 text-slate-700 font-bold py-3 px-4 rounded-xl hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
             >
@@ -104,6 +105,27 @@ export const SuccessPage: React.FC<SuccessPageProps> = ({ onHome }) => {
               Back to Home
             </button>
           </div>
+
+          {/* Cross-sell Banner */}
+          {onCrossSell && (
+            <div 
+              onClick={() => onCrossSell('shop')}
+              className="mt-6 bg-gradient-to-r from-purple-50 to-purple-100 border border-purple-200 rounded-2xl p-4 flex items-center justify-between cursor-pointer hover:shadow-md transition-all group"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-purple-200 rounded-full flex items-center justify-center shrink-0">
+                  <span className="text-2xl">🏪</span>
+                </div>
+                <div>
+                  <h4 className="font-bold text-slate-800 group-hover:text-purple-700 transition-colors">Protect your newly funded shop!</h4>
+                  <p className="text-sm text-slate-600">Get Shop Insurance from just ₹2/day</p>
+                </div>
+              </div>
+              <div className="bg-white p-2 rounded-full shadow-sm text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                →
+              </div>
+            </div>
+          )}
         </div>
 
       </div>

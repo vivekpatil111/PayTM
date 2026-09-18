@@ -1,8 +1,8 @@
 import React from 'react';
 
 interface NavbarProps {
-  onNavigate: (view: 'landing' | 'apply' | 'success') => void;
-  currentView: 'landing' | 'apply' | 'success';
+  onNavigate: (view: 'landing' | 'apply' | 'success' | 'insurance') => void;
+  currentView: 'landing' | 'apply' | 'success' | 'insurance';
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentView }) => {
@@ -32,14 +32,15 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentView }) => {
               Home
             </button>
             <button 
-              className="text-sm font-bold text-slate-500 hover:text-paytm-navy transition-colors"
+              onClick={() => onNavigate('insurance')} 
+              className={`text-sm font-bold transition-colors ${currentView === 'insurance' ? 'text-paytm-navy' : 'text-slate-500 hover:text-paytm-navy'}`}
             >
-              Benefits
+              Insurance
             </button>
             <button 
               className="text-sm font-bold text-slate-500 hover:text-paytm-navy transition-colors"
             >
-              How it Works
+              Benefits
             </button>
           </div>
 
