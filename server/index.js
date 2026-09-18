@@ -2,12 +2,12 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import OpenAI from 'openai';
-import { initCognee, rememberMerchantHistory, recallMerchantMemory } from './cogneeService.js';
+// import { initCognee, rememberMerchantHistory, recallMerchantMemory } from './cogneeService.js';
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 app.use(cors());
 app.use(express.json());
@@ -29,7 +29,7 @@ if (process.env.DEEPSEEK_API_KEY) {
 }
 
 // Initialize Cognee memory graph SDK
-initCognee();
+// initCognee();
 
 // -------------------------------------------------------------
 // In-Memory Database: Ramesh Kirana Store (Jaipur)
@@ -368,7 +368,7 @@ Respond concisely (under 3 sentences). If he is asking for a loan, confirm his e
 // ==========================================
 // NEW: COGNEE SDK CLOUD INTEGRATION ENDPOINTS
 // ==========================================
-
+/*
 app.post('/api/cognee/remember', async (req, res) => {
   const { merchantId, text } = req.body;
   if (!merchantId || !text) {
@@ -396,6 +396,7 @@ app.post('/api/cognee/recall', async (req, res) => {
     res.status(500).json({ error: result.error });
   }
 });
+*/
 
 // Start the Express server
 app.post('/api/disburse', async (req, res) => {
