@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import OpenAI from 'openai';
 import { createRequire } from 'module';
+import crypto from 'crypto';
 import { initCognee, rememberMerchantHistory, recallMerchantMemory } from './cogneeService.js';
 import { runMAS } from './agents/masWorkflow.js';
 
@@ -45,20 +46,16 @@ const PORT = process.env.PORT || 5001;
 app.use(cors());
 app.use(express.json());
 
-// Initialize Sarvam AI Client (via OpenAI SDK)
+// Initialize Local Ollama AI Client (via OpenAI SDK)
 let aiClient = null;
-if (process.env.SARVAM_API_KEY) {
-  try {
-    aiClient = new OpenAI({
-      baseURL: 'https://api.sarvam.ai/v1',
-      apiKey: process.env.SARVAM_API_KEY
-    });
-    console.log('✅ Sarvam AI Client initialized');
-  } catch (err) {
-    console.warn('⚠️ Could not initialize Sarvam AI client:', err.message);
-  }
-} else {
-  console.log('ℹ️ Running in resilient demo mode (Set SARVAM_API_KEY in .env)');
+try {
+  aiClient = new OpenAI({
+    baseURL: 'http://127.0.0.1:11434/v1',
+    apiKey: 'ollama' // API key is required by the SDK but ignored by Ollama
+  });
+  console.log('✅ Local Ollama AI Client initialized');
+} catch (err) {
+  console.warn('⚠️ Could not initialize Local Ollama AI client:', err.message);
 }
 
 // Initialize Cognee memory graph SDK
@@ -261,9 +258,17 @@ app.post('/api/disburse', (req, res) => {
   const { merchantId = 'MERCH_JAIPUR_0821', amount = 50000, tenureMonths = 6 } = req.body;
   const merchant = getMerchant(merchantId);
 
-  const txnId = `PTM-DISB-${Date.now().toString().slice(-8)}`;
+  // Concurrency & Idempotency check: Prevent double funding
+  if (merchant.activeLoan && merchant.activeLoan.status === 'ACTIVE') {
+    return res.status(409).json({ 
+      success: false, 
+      message: 'An active loan already exists for this merchant.' 
+    });
+  }
+
+  const txnId = `PTM-DISB-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
   const activeLoan = {
-    loanId: `LN-${Date.now().toString().slice(-6)}`,
+    loanId: `LN-${crypto.randomUUID().slice(0, 6).toUpperCase()}`,
     principal: amount,
     tenureMonths,
     monthlyEmi: 8830,
