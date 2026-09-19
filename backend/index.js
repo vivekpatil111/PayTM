@@ -576,8 +576,12 @@ app.get('/api/insurance/car/plans', (req, res) => {
   });
 });
 
+const processedInsuranceRequests = new Map();
+
 app.post('/api/insurance/issue', async (req, res) => {
   const { 
+    request_id,
+    quote_id,
     customer_id = 'MERCH_PUNE_411014', 
     category = 'health', 
     coverage = 1000000, 
@@ -588,6 +592,86 @@ app.post('/api/insurance/issue', async (req, res) => {
     answers = {},
     kyc = {}
   } = req.body;
+  
+  if (!request_id || !quote_id) {
+    return res.status(400).json({ success: false, message: 'Missing request_id or quote_id. Cannot process.' });
+  }
+
+  // 1. Idempotency Check
+  if (processedInsuranceRequests.has(request_id)) {
+    console.log(`[IDEMPOTENCY] Duplicate request caught: ${request_id}. Returning cached response.`);
+    return res.json(processedInsuranceRequests.get(request_id));
+  }
+
+  // 2. Authoritative Backend Recalculation
+  let expectedPremium = 0;
+  let expectedPartner = '';
+  
+  if (category === 'health') {
+    const isFamily = answers.members && answers.members !== 'Only me';
+    const expectedCoverage = isFamily ? 1000000 : 500000;
+    
+    if (coverage !== expectedCoverage) {
+       return res.status(400).json({ success: false, message: 'Coverage mismatch. Expected ' + expectedCoverage });
+    }
+    
+    const baseMonthly = coverage === 1000000 ? 804 : 689;
+    const baseYearly = coverage === 1000000 ? 9648 : 8268;
+
+    let multiplier = 1.0;
+    if (answers.age === '46-55 years') multiplier = 1.25;
+    if (answers.age === '56-65 years') multiplier = 1.5;
+    if (answers.health_issues && answers.health_issues !== 'None (100% Fit)') multiplier *= 1.15;
+
+    expectedPremium = Math.round((billingCycle === 'monthly' ? baseMonthly : baseYearly) * multiplier);
+    
+    const ansAge = answers.age || '';
+    const ansHealth = answers.health_issues || '';
+    const ansMembers = answers.members || '';
+    
+    if (ansHealth.includes('Diabetes')) expectedPartner = 'Star Health';
+    else if (ansHealth.includes('Hypertension')) expectedPartner = 'Care Health';
+    else if (ansHealth !== 'None (100% Fit)' && ansHealth !== '') expectedPartner = 'Niva Bupa';
+    else if (ansAge === '56-65 years') expectedPartner = 'National Insurance';
+    else if (ansAge === '46-55 years') expectedPartner = 'HDFC ERGO';
+    else if (ansMembers.includes('2 children')) expectedPartner = 'Aditya Birla';
+    else if (ansMembers.includes('1 child')) expectedPartner = 'SBI General';
+    else if (expectedPremium > 9000) expectedPartner = 'Bajaj Allianz';
+    else if (expectedPremium < 7000) expectedPartner = 'Acko';
+    else expectedPartner = 'ICICI Lombard';
+  } else if (category === 'car') {
+    const isThirdParty = answers.plan_type && answers.plan_type.includes('Third Party');
+    const isPayDrive = answers.plan_type && answers.plan_type.includes('Pay As You Drive');
+    const hasPACover = !answers.pa_cover || answers.pa_cover.includes('+₹354');
+
+    let basePrice = 3224; 
+    expectedPartner = 'Tata AIG';
+    
+    if (isThirdParty) {
+      basePrice = 2094;
+      expectedPartner = 'Go Digit';
+    } else if (isPayDrive) {
+      basePrice = 5081;
+      expectedPartner = 'ICICI Lombard';
+    }
+
+    const paCoverPrice = hasPACover ? 354 : 0;
+    const subtotal = basePrice + paCoverPrice;
+    const gst = Math.round(subtotal * 0.18);
+    expectedPremium = subtotal + gst;
+  } else {
+    expectedPremium = premium; // Pass-through for unimplemented categories for now
+    expectedPartner = partner;
+  }
+
+  // 3. Validation
+  if (premium !== expectedPremium) {
+    return res.status(400).json({ success: false, message: `Premium verification failed. Expected ₹${expectedPremium}, received ₹${premium}` });
+  }
+  
+  if (partner !== expectedPartner) {
+    return res.status(400).json({ success: false, message: `Partner verification failed. Expected ${expectedPartner}, received ${partner}` });
+  }
   
   const policy_id = `PTM-INS-${category.toUpperCase()}-${Date.now().toString().slice(-6)}`;
   const mandate_id = `UPI-MANDATE-${Date.now().toString().slice(-8)}`;
@@ -617,7 +701,7 @@ app.post('/api/insurance/issue', async (req, res) => {
     timestamp: new Date().toISOString()
   }).catch(err => console.error('[n8n] Insurance webhook retry wrapper error:', err));
 
-  res.json({
+  const finalResponse = {
     success: true,
     policy_id,
     mandate_id,
@@ -630,7 +714,12 @@ app.post('/api/insurance/issue', async (req, res) => {
     phone: kyc.mobileNumber || '9322019398',
     message: 'Insurance Policy Issued & UPI Mandate Activated Successfully',
     n8n_triggered: true
-  });
+  };
+  
+  // Cache response for idempotency
+  processedInsuranceRequests.set(request_id, finalResponse);
+
+  res.json(finalResponse);
 });
 
 app.listen(PORT, () => {
