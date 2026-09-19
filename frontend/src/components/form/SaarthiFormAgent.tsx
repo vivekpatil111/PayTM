@@ -332,15 +332,15 @@ export const SaarthiFormAgent: React.FC<SaarthiFormAgentProps> = ({ onEvent, onA
   }, []);
 
   return (
-    <div className="relative w-full max-w-md mx-auto">
+    <div className="w-full max-w-md mx-auto flex flex-col" style={{ height: '780px' }}>
 
-      {/* ── Language Selector (top right, above form) ── */}
-      <div className="absolute -top-12 right-0 z-50 flex items-center gap-1.5 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-md border border-slate-200">
+      {/* ── Language Selector (inline, above form card) ── */}
+      <div className="flex items-center justify-end gap-1.5 mb-2 px-1">
         <Globe className="w-3.5 h-3.5 text-blue-500" />
         <select
           value={lang}
           onChange={e => setLang(e.target.value as SupportedLanguage)}
-          className="text-xs font-bold text-slate-700 bg-transparent focus:outline-none cursor-pointer"
+          className="text-xs font-bold text-slate-700 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-full shadow-sm border border-slate-200 focus:outline-none cursor-pointer"
         >
           {LANGUAGES.map(l => (
             <option key={l.code} value={l.code}>{l.label}</option>
@@ -348,8 +348,8 @@ export const SaarthiFormAgent: React.FC<SaarthiFormAgentProps> = ({ onEvent, onA
         </select>
       </div>
 
-      {/* ── Form ── */}
-      <div className="absolute inset-x-0 inset-y-0 pb-[100px] pointer-events-auto">
+      {/* ── Form fills remaining space ── */}
+      <div className="flex-1 min-h-0 pointer-events-auto">
         <TraditionalForm
           pages={pages}
           currentPageIndex={currentPageIndex}
@@ -361,9 +361,9 @@ export const SaarthiFormAgent: React.FC<SaarthiFormAgentProps> = ({ onEvent, onA
         />
       </div>
 
-      {/* ── Floating Saarthi Agent Panel ── */}
+      {/* ── Saarthi Agent Panel (always visible at bottom) ── */}
       <div
-        className={`absolute bottom-0 left-0 right-0 rounded-b-2xl overflow-hidden
+        className={`rounded-b-2xl overflow-hidden
           bg-gradient-to-b from-slate-900 to-slate-950
           border-t ${isAutofilling ? 'border-blue-500' : 'border-slate-700'}
           shadow-xl transition-all duration-500`}

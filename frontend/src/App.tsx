@@ -87,16 +87,16 @@ function App() {
         )}
 
         {(currentView === 'apply' || currentView === 'insurance') && (
-          <div className="flex-1 p-4 md:p-8 flex flex-col lg:flex-row gap-6 max-w-7xl mx-auto w-full">
+          <div className="flex-1 px-4 pt-4 pb-6 md:px-8 md:pt-6 md:pb-8 flex flex-col lg:flex-row gap-6 max-w-7xl mx-auto w-full">
 
-            {/* ── Demo Toolbar: Persona Selector ── */}
-            <div className="lg:hidden flex items-center justify-between gap-2 -mt-2 mb-2">
+            {/* ── Demo Toolbar: Persona Selector (mobile) ── */}
+            <div className="lg:hidden flex items-center justify-between gap-2 mb-1">
               <p className="text-xs text-slate-500 font-medium">Switch Merchant Demo:</p>
               <PersonaSelector currentId={activeMerchantId} onSelect={setActiveMerchantId} />
             </div>
 
             {/* Left Column: Form / Insurance Agent */}
-            <div className="flex-1 flex flex-col items-center justify-center min-h-[600px] relative">
+            <div className="flex-1 flex flex-col items-center">
               {currentView === 'insurance' ? (
                 <InsuranceAgentView onEvent={pushEvent} preselectedCategory={insuranceCategory} />
               ) : showAudit ? (
@@ -107,9 +107,9 @@ function App() {
             </div>
 
             {/* Right Column: Engineer Trace View */}
-            <div className="w-full lg:w-96 shrink-0 h-[600px] lg:h-auto lg:min-h-[800px] bg-slate-900 rounded-xl shadow-2xl overflow-hidden flex flex-col border border-slate-700">
+            <div className="w-full lg:w-[420px] shrink-0 bg-slate-900 rounded-xl shadow-2xl overflow-hidden flex flex-col border border-slate-700" style={{ minHeight: '800px' }}>
 
-              {/* Persona Selector — desktop, shown above trace panel */}
+              {/* Persona Selector — desktop */}
               <div className="hidden lg:flex items-center justify-between px-3 py-2 border-b border-slate-800 bg-slate-950 shrink-0">
                 <span className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Demo Merchant</span>
                 <PersonaSelector currentId={activeMerchantId} onSelect={setActiveMerchantId} />

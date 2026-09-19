@@ -101,7 +101,7 @@ export const TraditionalForm: React.FC<TraditionalFormProps> = ({
   };
 
   return (
-    <div className="w-full max-w-md mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-100 flex flex-col" style={{ height: '700px' }}>
+    <div className="w-full max-w-md mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-100 flex flex-col h-full">
 
       {/* ─── Header ───────────────────────────────── */}
       <div className="shrink-0 bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 px-5 pt-5 pb-4">
