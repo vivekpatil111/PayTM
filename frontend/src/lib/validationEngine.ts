@@ -163,7 +163,7 @@ export const AUTOFILL_MERCHANTS: Record<string, AutofillData> = {
 
     existingLoans: { value: '0', source: 'Experian / CIBIL Bureau', valid: ValidationState.VERIFIED },
     totalEmi: { value: '₹0', source: 'Bureau API', valid: ValidationState.VERIFIED },
-    cibilScore: { value: '785', source: 'CIBIL API', valid: ValidationState.VERIFIED },
+    cibilScore: { value: 'NTC / Thin File — Alternative Score: 825 (Paytm GMV)', source: 'CIBIL API (No Score) + Paytm Internal', valid: ValidationState.VERIFIED },
 
     ref1Name: { value: 'Suresh Kumar', source: 'Paytm Device Contacts', valid: ValidationState.VERIFIED },
     ref1Phone: { value: '+91 9988776655', source: 'Paytm Device Contacts', valid: ValidationState.VERIFIED },

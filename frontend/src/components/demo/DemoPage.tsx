@@ -17,8 +17,8 @@ const RAMESH_MERCHANT: Merchant = {
   upiId: 'ramesh.kirana@paytm',
   walletBalance: 12450,
   joinedDate: '2021-08-14',
-  cibilScore: 745,
-  cibilStatus: 'GOOD',
+  cibilScore: null,
+  cibilStatus: 'NO_SCORE / THIN_FILE (Zero formal credit history)',
   bankAccount: {
     bankName: 'State Bank of India',
     accountMasked: 'XXXX XXXX 3491',

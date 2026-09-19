@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { FormPage, ValidationState } from '../../lib/validationEngine';
 import { AlertTriangle, CheckCircle2, XCircle, Clock, ChevronRight, Shield } from 'lucide-react';
 import { translate, SupportedLanguage } from '../../lib/translationEngine';
+import { validateAadhaar, validatePAN, mockVerifyKyc } from '../../lib/kycValidation';
 
 interface TraditionalFormProps {
   pages: FormPage[];
@@ -9,6 +10,7 @@ interface TraditionalFormProps {
   isAutofilling: boolean;
   onNextPage: () => void;
   onFieldChange: (fieldId: string, value: string) => void;
+  onFieldStateChange: (fieldId: string, state: ValidationState) => void;
   lang: SupportedLanguage;
 }
 
@@ -18,9 +20,57 @@ export const TraditionalForm: React.FC<TraditionalFormProps> = ({
   isAutofilling,
   onNextPage,
   onFieldChange,
+  onFieldStateChange,
   lang
 }) => {
   const page = pages[currentPageIndex];
+
+  // ── KYC inline validation errors (Documents page only) ─────────────────────────
+  const [docErrors, setDocErrors] = useState<Record<string, string | undefined>>({});
+
+  // Auto-fetched / DigiLocker values should not trigger format validation
+  const isAutoFetched = (val: string) =>
+    val.includes('DigiLocker') || val.includes('Auto') || val.includes('Aggregator');
+
+  const handleFieldChange = (fieldId: string, value: string) => {
+    onFieldChange(fieldId, value);
+
+    if (isAutoFetched(value)) {
+      setDocErrors(prev => ({ ...prev, [fieldId]: undefined }));
+      return;
+    }
+
+    if (fieldId === 'aadhaarUpload') {
+      const result = validateAadhaar(value);
+      setDocErrors(prev => ({ ...prev, aadhaarUpload: result.valid ? undefined : result.error }));
+    }
+    if (fieldId === 'panUpload') {
+      const result = validatePAN(value);
+      setDocErrors(prev => ({ ...prev, panUpload: result.valid ? undefined : result.error }));
+    }
+  };
+
+  // ── Auto-fill compatibility: Run mock verification on valid manual input ──
+  const aadhaarField = page.fields.find(f => f.id === 'aadhaarUpload');
+  const panField = page.fields.find(f => f.id === 'panUpload');
+
+  useEffect(() => {
+    if (aadhaarField?.value && !isAutoFetched(aadhaarField.value) && validateAadhaar(aadhaarField.value).valid && aadhaarField.state === ValidationState.PENDING) {
+      onFieldStateChange('aadhaarUpload', ValidationState.VERIFYING);
+      mockVerifyKyc('aadhaar', aadhaarField.value).then(() => {
+        onFieldStateChange('aadhaarUpload', ValidationState.VERIFIED);
+      });
+    }
+  }, [aadhaarField?.value, aadhaarField?.state]);
+
+  useEffect(() => {
+    if (panField?.value && !isAutoFetched(panField.value) && validatePAN(panField.value).valid && panField.state === ValidationState.PENDING) {
+      onFieldStateChange('panUpload', ValidationState.VERIFYING);
+      mockVerifyKyc('pan', panField.value).then(() => {
+        onFieldStateChange('panUpload', ValidationState.VERIFIED);
+      });
+    }
+  }, [panField?.value, panField?.state]);
 
   const totalFields = pages.reduce((acc, p) => acc + p.fields.length, 0);
   const filledFields = pages.reduce((acc, p) => acc + p.fields.filter(f => f.value !== '').length, 0);
@@ -139,7 +189,7 @@ export const TraditionalForm: React.FC<TraditionalFormProps> = ({
               <input
                 type="text"
                 value={field.value}
-                onChange={(e) => onFieldChange(field.id, e.target.value)}
+                onChange={(e) => handleFieldChange(field.id, e.target.value)}
                 placeholder={`${translate(field.label, lang)}...`}
                 className="w-full bg-transparent text-sm font-medium text-slate-800 px-3.5 py-2.5 pr-24 rounded-xl placeholder:text-slate-300 focus:outline-none"
               />
@@ -155,7 +205,15 @@ export const TraditionalForm: React.FC<TraditionalFormProps> = ({
               </div>
             </div>
 
-            {field.errorMessage && (
+            {/* KYC format error (Aadhaar / PAN — manual entry only) */}
+            {docErrors[field.id] && (
+              <p className="text-[10px] text-red-600 mt-1 font-medium flex items-center gap-1">
+                <XCircle className="w-3 h-3 shrink-0" />
+                {docErrors[field.id]}
+              </p>
+            )}
+
+            {field.errorMessage && !docErrors[field.id] && (
               <p className="text-[10px] text-amber-600 mt-1 font-medium flex items-center gap-1">
                 <AlertTriangle className="w-3 h-3 shrink-0" />
                 {field.errorMessage}

@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { TraditionalForm } from './TraditionalForm';
 import { INITIAL_FORM_DATA, AUTOFILL_MERCHANTS, FormPage, ValidationState } from '../../lib/validationEngine';
 import { translate, SupportedLanguage, LANGUAGES } from '../../lib/translationEngine';
-import { Mic, Sparkles, Send, Globe, User } from 'lucide-react';
+import { Mic, MicOff, Sparkles, Send, Globe } from 'lucide-react';
 import { TraceEvent } from '../../lib/demoEngine';
 
 interface SaarthiFormAgentProps {
@@ -22,10 +22,13 @@ export const SaarthiFormAgent: React.FC<SaarthiFormAgentProps> = ({ onEvent, onA
   );
   const [chatInput, setChatInput] = useState('');
   const [isListening, setIsListening] = useState(false);
+  const [isSpeechSupported, setIsSpeechSupported] = useState(false);
+  const recognitionRef = useRef<any>(null);
 
   const autofillRef = useRef<number | null>(null);
   const timeOffsetRef = useRef<number>(1);
 
+  // ── Speech synthesis ────────────────────────────────────────────────────────
   const speak = (textKey: string) => {
     try {
       const synth = window.speechSynthesis;
@@ -45,6 +48,81 @@ export const SaarthiFormAgent: React.FC<SaarthiFormAgentProps> = ({ onEvent, onA
     } catch (_) {}
   };
 
+  // ── Web Speech API — SpeechRecognition ─────────────────────────────────────
+  // Detect browser support on mount
+  useEffect(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    setIsSpeechSupported(!!SpeechRecognition);
+  }, []);
+
+  const startListening = useCallback(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    // ── Real STT path ────────────────────────────────────────────────────────
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognitionRef.current = recognition;
+      const locale = LANGUAGES.find(l => l.code === lang)?.speechLocale || 'en-IN';
+      recognition.lang = locale;
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      setIsListening(true);
+      setAgentMessageKey('Listening... Speak your question.');
+
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        setChatInput(transcript);
+        setIsListening(false);
+        onEvent({
+          id: `voice_stt_${Date.now()}`,
+          timeOffset: timeOffsetRef.current++,
+          icon: '🎙️',
+          message: `STT (${locale}): "${transcript}"`,
+          type: 'info'
+        });
+        setAgentMessageKey('Got it! Sending your query...');
+      };
+
+      recognition.onerror = (event: any) => {
+        console.warn('[STT] Error:', event.error);
+        setIsListening(false);
+        setAgentMessageKey('Could not understand. Please type your query.');
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognition.start();
+      return;
+    }
+
+    // ── Simulated fallback (non-supporting browsers) ──────────────────────────
+    setIsListening(true);
+    setAgentMessageKey('Listening... Speak your question.');
+    setTimeout(() => {
+      setChatInput('Mujhe yaha dikkat aa rahi hai, kaise fill karu?');
+      setIsListening(false);
+    }, 2500);
+  }, [lang, onEvent]);
+
+  const stopListening = useCallback(() => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
+    setIsListening(false);
+  }, []);
+
+  const toggleListen = () => {
+    if (isListening) {
+      stopListening();
+    } else {
+      startListening();
+    }
+  };
+
   const handleFieldChange = (fieldId: string, value: string) => {
     setPages(prev =>
       prev.map((page, idx) => {
@@ -53,6 +131,20 @@ export const SaarthiFormAgent: React.FC<SaarthiFormAgentProps> = ({ onEvent, onA
           ...page,
           fields: page.fields.map(f =>
             f.id === fieldId ? { ...f, value, state: ValidationState.PENDING } : f
+          )
+        };
+      })
+    );
+  };
+
+  const handleFieldStateChange = (fieldId: string, state: ValidationState) => {
+    setPages(prev =>
+      prev.map((page, idx) => {
+        if (idx !== currentPageIndex) return page;
+        return {
+          ...page,
+          fields: page.fields.map(f =>
+            f.id === fieldId ? { ...f, state } : f
           )
         };
       })
@@ -188,21 +280,13 @@ export const SaarthiFormAgent: React.FC<SaarthiFormAgentProps> = ({ onEvent, onA
     }
   };
 
-  const toggleListen = () => {
-    if (!isListening) {
-      setIsListening(true);
-      setAgentMessageKey('Listening... Speak your question.');
-      setTimeout(() => {
-        setChatInput('Mujhe yaha dikkat aa rahi hai, kaise fill karu?');
-        setIsListening(false);
-      }, 2500);
-    }
-  };
+
 
   useEffect(() => {
     return () => {
       if (autofillRef.current) clearTimeout(autofillRef.current);
       window.speechSynthesis?.cancel();
+      if (recognitionRef.current) recognitionRef.current.stop();
     };
   }, []);
 
@@ -224,14 +308,17 @@ export const SaarthiFormAgent: React.FC<SaarthiFormAgentProps> = ({ onEvent, onA
       </div>
 
       {/* ── Form ── */}
-      <TraditionalForm
-        pages={pages}
-        currentPageIndex={currentPageIndex}
-        isAutofilling={isAutofilling}
-        onNextPage={handleNextPage}
-        onFieldChange={handleFieldChange}
-        lang={lang}
-      />
+      <div className="absolute inset-x-0 inset-y-0 pb-[100px] pointer-events-auto">
+        <TraditionalForm
+          pages={pages}
+          currentPageIndex={currentPageIndex}
+          isAutofilling={isAutofilling}
+          onNextPage={handleNextPage}
+          onFieldChange={handleFieldChange}
+          onFieldStateChange={handleFieldStateChange}
+          lang={lang}
+        />
+      </div>
 
       {/* ── Floating Saarthi Agent Panel ── */}
       <div
@@ -303,10 +390,11 @@ export const SaarthiFormAgent: React.FC<SaarthiFormAgentProps> = ({ onEvent, onA
           <button
             type="button"
             onClick={toggleListen}
+            title={isSpeechSupported ? 'Voice input (real STT)' : 'Voice input (simulated fallback)'}
             className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-colors
-              ${isListening ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-slate-800 text-slate-400 hover:text-white border border-slate-700'}`}
+              ${isListening ? 'bg-red-500/30 text-red-400 border border-red-400/50 animate-pulse' : 'bg-slate-800 text-slate-400 hover:text-white border border-slate-700'}`}
           >
-            <Mic className="w-3.5 h-3.5" />
+            {isListening ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
           </button>
 
           <input

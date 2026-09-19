@@ -9,6 +9,7 @@ import { DEFAULT_PREFILLED_KYC } from '../../lib/paytmInsuranceData';
 import { TraceEvent } from '../../lib/demoEngine';
 import { translate, LANGUAGES, SupportedLanguage } from '../../lib/translationEngine';
 import { Send, Sparkles, CheckCircle, Download, MessageSquare, Globe } from 'lucide-react';
+import { mockVerifyKyc, validateAadhaar, validatePAN, validateMobile } from '../../lib/kycValidation';
 
 interface InsuranceAgentViewProps {
   onEvent: (event: TraceEvent) => void;
@@ -31,6 +32,8 @@ export const InsuranceAgentView: React.FC<InsuranceAgentViewProps> = ({ onEvent,
   const [quoteData, setQuoteData] = useState<any>(null);
   const [partnerData, setPartnerData] = useState<any>(null);
   const [issuedPolicy, setIssuedPolicy] = useState<any>(null);
+  const [kycErrors, setKycErrors] = useState<Record<string, string>>({});
+  const [kycVerifying, setKycVerifying] = useState(false);
 
   const timeOffsetRef = useRef(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -169,9 +172,56 @@ export const InsuranceAgentView: React.FC<InsuranceAgentViewProps> = ({ onEvent,
     }
   };
 
-  // ── buy / issue ───────────────────────────────────────────────────────────
+  // ── buy / issue (with KYC validation) ────────────────────────────────────
   const handleBuy = async (planDetails?: any) => {
-    onEvent({ id: `ins_kyc_${Date.now()}`, timeOffset: timeOffsetRef.current++, icon: '✅', message: `KYC verified via Paytm ID: ${DEFAULT_PREFILLED_KYC.mobileNumber}`, type: 'success' });
+    setKycErrors({});
+    setKycVerifying(true);
+
+    // --- Format-level validation (instant) ---
+    const kyc = DEFAULT_PREFILLED_KYC;
+    const errors: Record<string, string> = {};
+
+    const aadhaarResult = validateAadhaar(kyc.aadhaarNumber || '');
+    if (!aadhaarResult.valid) errors.aadhaar = aadhaarResult.error!;
+
+    const panResult = validatePAN(kyc.pan || '');
+    if (!panResult.valid) errors.pan = panResult.error!;
+
+    const mobileResult = validateMobile(kyc.mobileNumber || '');
+    if (!mobileResult.valid) errors.mobile = mobileResult.error!;
+
+    if (Object.keys(errors).length > 0) {
+      setKycErrors(errors);
+      setKycVerifying(false);
+      onEvent({
+        id: `kyc_fail_${Date.now()}`,
+        timeOffset: timeOffsetRef.current++,
+        icon: '❌',
+        message: `KYC Validation Failed: ${Object.values(errors).join(' | ')}`,
+        type: 'warning'
+      });
+      return;
+    }
+
+    // --- Mock verification delay (simulates real API roundtrip) ---
+    onEvent({
+      id: `kyc_verify_start_${Date.now()}`,
+      timeOffset: timeOffsetRef.current++,
+      icon: '🔐',
+      message: 'Verifying KYC via Aadhaar UIDAI + PAN NSDL APIs...',
+      type: 'info'
+    });
+
+    const aadhaarVerify = await mockVerifyKyc('aadhaar', kyc.aadhaarNumber || '');
+    if (!aadhaarVerify.verified) {
+      setKycErrors({ aadhaar: aadhaarVerify.error || 'Aadhaar verification failed' });
+      setKycVerifying(false);
+      return;
+    }
+
+    setKycVerifying(false);
+
+    onEvent({ id: `ins_kyc_${Date.now()}`, timeOffset: timeOffsetRef.current++, icon: '✅', message: `KYC verified via Paytm ID: ${DEFAULT_PREFILLED_KYC.mobileNumber} | Aadhaar: ${aadhaarVerify.maskedValue}`, type: 'success' });
     onEvent({ id: `ins_mandate_${Date.now()}`, timeOffset: timeOffsetRef.current++, icon: '⚡', message: `Configuring UPI Autopay mandate: ₹${planDetails?.premium || quoteData.monthlyPremium || 804}/month`, type: 'info' });
 
     try {
@@ -332,7 +382,26 @@ export const InsuranceAgentView: React.FC<InsuranceAgentViewProps> = ({ onEvent,
 
         {/* QUOTE */}
         {step === 'quote' && quoteData && partnerData && (
-          <div className="m-auto w-full">
+          <div className="m-auto w-full space-y-2">
+
+            {/* KYC verifying overlay */}
+            {kycVerifying && (
+              <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2.5 text-xs text-blue-700 font-medium">
+                <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin shrink-0" />
+                Verifying Aadhaar UIDAI + PAN NSDL... please wait
+              </div>
+            )}
+
+            {/* KYC validation errors */}
+            {!kycVerifying && Object.keys(kycErrors).length > 0 && (
+              <div className="bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-xs text-red-700 space-y-1">
+                <p className="font-bold">⚠️ KYC Validation Failed:</p>
+                {Object.entries(kycErrors).map(([field, err]) => (
+                  <p key={field} className="capitalize">• <span className="font-semibold">{field}:</span> {err}</p>
+                ))}
+              </div>
+            )}
+
             {category === 'car' ? (
               <CarQuoteCard quote={quoteData} partner={partnerData} onBuy={handleBuy} lang={lang} />
             ) : (

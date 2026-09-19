@@ -1,0 +1,224 @@
+[
+  {
+    "merchantId": "MERCH_JAIPUR_0821",
+    "name": "Ramesh Sharma",
+    "businessName": "Ramesh Kirana Store",
+    "category": "Grocery & Daily Essentials",
+    "address": "Shop 14, Main Market, Tonk Road, Jaipur, Rajasthan",
+    "upiId": "ramesh.kirana@paytm",
+    "walletBalance": 3840,
+    "joinedDate": "2023-04-12",
+    "cibilScore": null,
+    "cibilStatus": "NO_SCORE / THIN_FILE (Zero formal credit history)",
+    "bankAccount": {
+      "bankName": "State Bank of India",
+      "accountMasked": "•••• •••• 4821",
+      "ifsc": "SBIN0004120",
+      "verified": true
+    },
+    "qrMetrics": {
+      "totalTransactions180d": 4520,
+      "avgMonthlyGmv": 86400,
+      "growthMoM": 14.2,
+      "uniquePayerRatio": 78.4,
+      "dailySettlements": 178,
+      "bouncedSettlements": 0,
+      "peakHours": "08:00 - 11:00 AM & 06:00 - 09:30 PM",
+      "avgTicketSize": 115
+    },
+    "activeLoan": null,
+    "pastLoans": [],
+    "_meta": {
+      "persona": "Tier-1 Flagship",
+      "altScore": 825,
+      "tier": "TIER_1",
+      "city": "Jaipur",
+      "stateRegion": "Rajasthan"
+    }
+  },
+  {
+    "merchantId": "MERCH_PUNE_0411",
+    "name": "Sunita Devi",
+    "businessName": "Sunita Silai Centre",
+    "category": "Tailoring & Garments",
+    "address": "Door No. 12, Shivaji Nagar, Pune, Maharashtra",
+    "upiId": "sunita.silai@paytm",
+    "walletBalance": 1200,
+    "joinedDate": "2024-01-18",
+    "cibilScore": null,
+    "cibilStatus": "NO_SCORE / THIN_FILE (First-time borrower)",
+    "bankAccount": {
+      "bankName": "Bank of Maharashtra",
+      "accountMasked": "•••• •••• 3391",
+      "ifsc": "MAHB0001129",
+      "verified": true
+    },
+    "qrMetrics": {
+      "totalTransactions180d": 840,
+      "avgMonthlyGmv": 21000,
+      "growthMoM": -2.1,
+      "uniquePayerRatio": 42.0,
+      "dailySettlements": 62,
+      "bouncedSettlements": 1,
+      "peakHours": "10:00 AM - 01:00 PM",
+      "avgTicketSize": 250
+    },
+    "activeLoan": null,
+    "pastLoans": [],
+    "_meta": {
+      "persona": "Tier-3 First-Timer",
+      "altScore": 620,
+      "tier": "TIER_3",
+      "city": "Pune",
+      "stateRegion": "Maharashtra"
+    }
+  },
+  {
+    "merchantId": "MERCH_DELHI_1104",
+    "name": "Arjun Mehta",
+    "businessName": "Mehta Mobile & Recharge Shop",
+    "category": "Electronics & Telecom Retail",
+    "address": "Shop 3B, Nehru Place Market, New Delhi",
+    "upiId": "arjun.mobile@paytm",
+    "walletBalance": 7200,
+    "joinedDate": "2022-11-05",
+    "cibilScore": null,
+    "cibilStatus": "NO_SCORE / THIN_FILE (Informal sector, no formal credit)",
+    "bankAccount": {
+      "bankName": "Punjab National Bank",
+      "accountMasked": "•••• •••• 2244",
+      "ifsc": "PUNB0044300",
+      "verified": true
+    },
+    "qrMetrics": {
+      "totalTransactions180d": 3180,
+      "avgMonthlyGmv": 64500,
+      "growthMoM": 8.6,
+      "uniquePayerRatio": 65.2,
+      "dailySettlements": 145,
+      "bouncedSettlements": 0,
+      "peakHours": "11:00 AM - 02:00 PM & 05:00 - 08:00 PM",
+      "avgTicketSize": 340
+    },
+    "activeLoan": null,
+    "pastLoans": [],
+    "_meta": {
+      "persona": "Tier-2 Mid Merchant",
+      "altScore": 762,
+      "tier": "TIER_2",
+      "city": "New Delhi",
+      "stateRegion": "Delhi NCR"
+    }
+  },
+  {
+    "merchantId": "MERCH_MUMBAI_0512",
+    "name": "Priya Nadar",
+    "businessName": "Priya Tiffin Services",
+    "category": "Food & Catering",
+    "address": "Room 5, Dharavi Main Road, Mumbai, Maharashtra",
+    "upiId": "priya.tiffin@paytm",
+    "walletBalance": 5500,
+    "joinedDate": "2023-08-22",
+    "cibilScore": null,
+    "cibilStatus": "NO_SCORE / THIN_FILE (Gig economy, no bureau record)",
+    "bankAccount": {
+      "bankName": "Kotak Mahindra Bank",
+      "accountMasked": "•••• •••• 8812",
+      "ifsc": "KKBK0001245",
+      "verified": true
+    },
+    "qrMetrics": {
+      "totalTransactions180d": 2640,
+      "avgMonthlyGmv": 52800,
+      "growthMoM": 22.1,
+      "uniquePayerRatio": 81.7,
+      "dailySettlements": 120,
+      "bouncedSettlements": 0,
+      "peakHours": "07:00 - 09:30 AM & 12:00 - 02:00 PM",
+      "avgTicketSize": 80
+    },
+    "activeLoan": null,
+    "pastLoans": [],
+    "_meta": {
+      "persona": "Tier-1 High-Growth Gig",
+      "altScore": 810,
+      "tier": "TIER_1",
+      "city": "Mumbai",
+      "stateRegion": "Maharashtra"
+    }
+  },
+  {
+    "merchantId": "MERCH_HYDERABAD_0903",
+    "name": "Venkat Reddy",
+    "businessName": "Reddy Auto Spare Parts",
+    "category": "Automotive & Spare Parts",
+    "address": "Plot 22, Secunderabad Market, Hyderabad, Telangana",
+    "upiId": "venkat.auto@paytm",
+    "walletBalance": 9800,
+    "joinedDate": "2022-06-10",
+    "cibilScore": null,
+    "cibilStatus": "NO_SCORE / THIN_FILE (No formal banking credit product used)",
+    "bankAccount": {
+      "bankName": "HDFC Bank",
+      "accountMasked": "•••• •••• 6677",
+      "ifsc": "HDFC0002345",
+      "verified": true
+    },
+    "qrMetrics": {
+      "totalTransactions180d": 5800,
+      "avgMonthlyGmv": 128000,
+      "growthMoM": 6.3,
+      "uniquePayerRatio": 71.5,
+      "dailySettlements": 192,
+      "bouncedSettlements": 0,
+      "peakHours": "09:00 AM - 12:00 PM & 03:00 - 06:00 PM",
+      "avgTicketSize": 440
+    },
+    "activeLoan": null,
+    "pastLoans": [],
+    "_meta": {
+      "persona": "Tier-1 High-Volume Veteran",
+      "altScore": 851,
+      "tier": "TIER_1",
+      "city": "Hyderabad",
+      "stateRegion": "Telangana"
+    }
+  },
+  {
+    "merchantId": "MERCH_KOLKATA_0707",
+    "name": "Fatima Begum",
+    "businessName": "Fatima Handicrafts",
+    "category": "Handicrafts & Ethnic Wear",
+    "address": "Stall 8, New Market Complex, Kolkata, West Bengal",
+    "upiId": "fatima.crafts@paytm",
+    "walletBalance": 2100,
+    "joinedDate": "2024-03-14",
+    "cibilScore": null,
+    "cibilStatus": "NO_SCORE / THIN_FILE (Seasonal income, no formal credit)",
+    "bankAccount": {
+      "bankName": "UCO Bank",
+      "accountMasked": "•••• •••• 5560",
+      "ifsc": "UCBA0001223",
+      "verified": true
+    },
+    "qrMetrics": {
+      "totalTransactions180d": 510,
+      "avgMonthlyGmv": 14200,
+      "growthMoM": -5.3,
+      "uniquePayerRatio": 55.0,
+      "dailySettlements": 38,
+      "bouncedSettlements": 3,
+      "peakHours": "10:00 AM - 06:00 PM (Tourist season)",
+      "avgTicketSize": 560
+    },
+    "activeLoan": null,
+    "pastLoans": [],
+    "_meta": {
+      "persona": "Tier-4 Seasonal/Borderline",
+      "altScore": 520,
+      "tier": "TIER_4",
+      "city": "Kolkata",
+      "stateRegion": "West Bengal"
+    }
+  }
+]

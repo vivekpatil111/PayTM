@@ -133,5 +133,8 @@ export const DEFAULT_PREFILLED_KYC = {
   email: 'ramesh.merchant@gmail.com',
   pincode: '411014',
   city: 'Pune, Maharashtra',
-  address: 'Shop 14, Kharadi Main Market, Pune'
+  address: 'Shop 14, Kharadi Main Market, Pune',
+  // KYC identifiers — used for format validation in the insurance buy flow
+  aadhaarNumber: '234567891234',  // 12-digit, mock (not linked to any real identity)
+  pan: 'RAMEK1234M'               // AAAAA9999A format, mock
 };

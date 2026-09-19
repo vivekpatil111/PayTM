@@ -2,12 +2,12 @@ import { Merchant, UnderwritingData, KnowledgeGraphData, TelemetryLog } from '..
 
 export const api = {
   // Fetch merchant profile and recent telemetry
-  async getMerchant(): Promise<{ data: Merchant; telemetry: TelemetryLog[] }> {
+  async getMerchant(merchantId = 'MERCH_JAIPUR_0821'): Promise<{ data: Merchant; telemetry: TelemetryLog[]; availablePersonas?: any[] }> {
     try {
-      const res = await fetch('/api/merchant');
+      const res = await fetch(`/api/merchant?id=${merchantId}`);
       if (!res.ok) throw new Error('API request failed');
       const json = await res.json();
-      return { data: json.data, telemetry: json.telemetry };
+      return { data: json.data, telemetry: json.telemetry, availablePersonas: json.availablePersonas };
     } catch (e) {
       console.warn('Backend fetch failed, using pre-calibrated baseline data:', e);
       return {
@@ -53,9 +53,9 @@ export const api = {
   },
 
   // Fetch alternative underwriting evaluation
-  async getUnderwriting(): Promise<UnderwritingData> {
+  async getUnderwriting(merchantId = 'MERCH_JAIPUR_0821'): Promise<UnderwritingData> {
     try {
-      const res = await fetch('/api/underwrite/evaluate');
+      const res = await fetch(`/api/underwrite/evaluate?id=${merchantId}`);
       if (!res.ok) throw new Error('API request failed');
       const json = await res.json();
       return json.data;

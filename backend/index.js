@@ -2,9 +2,41 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import OpenAI from 'openai';
-// import { initCognee, rememberMerchantHistory, recallMerchantMemory } from './cogneeService.js';
+import { createRequire } from 'module';
+import { initCognee, rememberMerchantHistory, recallMerchantMemory } from './cogneeService.js';
 
 dotenv.config();
+
+// ── Load mock merchant personas from shared JSON ──────────────────────────────
+const require = createRequire(import.meta.url);
+const MOCK_MERCHANTS = require('../frontend/src/lib/mockMerchants.json');
+// Index by merchantId for O(1) lookup
+const MERCHANT_MAP = Object.fromEntries(MOCK_MERCHANTS.map(m => [m.merchantId, m]));
+
+// ── n8n Webhook with Exponential-Backoff Retry ────────────────────────────────
+async function sendWebhookWithRetry(url, payload, retries = 3) {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        console.log(`✅ [n8n] Webhook delivered on attempt ${attempt + 1}`);
+        return { success: true, attempt: attempt + 1 };
+      }
+      console.warn(`⚠️ [n8n] Webhook attempt ${attempt + 1} returned HTTP ${res.status}`);
+    } catch (err) {
+      console.warn(`⚠️ [n8n] Webhook attempt ${attempt + 1} failed: ${err.message}`);
+    }
+    if (attempt < retries - 1) {
+      await new Promise(r => setTimeout(r, 500 * (attempt + 1))); // 500ms, 1000ms, 1500ms
+    }
+  }
+  console.error('❌ [n8n] All webhook retry attempts exhausted.');
+  return { success: false };
+}
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -32,38 +64,24 @@ if (process.env.DEEPSEEK_API_KEY) {
 // initCognee();
 
 // -------------------------------------------------------------
-// In-Memory Database: Ramesh Kirana Store (Jaipur)
+// In-Memory Database — seeded from mockMerchants.json
+// Runtime state (wallet balance, active loans) is overlaid here
+// so individual demo runs stay isolated.
 // -------------------------------------------------------------
-let merchantDB = {
-  merchantId: 'MERCH_JAIPUR_0821',
-  name: 'Ramesh Sharma',
-  businessName: 'Ramesh Kirana Store',
-  category: 'Grocery & Daily Essentials',
-  address: 'Shop 14, Main Market, Tonk Road, Jaipur, Rajasthan',
-  upiId: 'ramesh.kirana@paytm',
-  walletBalance: 3840,
-  joinedDate: '2023-04-12',
-  cibilScore: null,
-  cibilStatus: 'NO_SCORE / THIN_FILE (Zero formal credit history)',
-  bankAccount: {
-    bankName: 'State Bank of India',
-    accountMasked: '•••• •••• 4821',
-    ifsc: 'SBIN0004120',
-    verified: true
-  },
-  qrMetrics: {
-    totalTransactions180d: 4520,
-    avgMonthlyGmv: 86400,
-    growthMoM: 14.2,
-    uniquePayerRatio: 78.4,
-    dailySettlements: 178,
-    bouncedSettlements: 0,
-    peakHours: '08:00 - 11:00 AM & 06:00 - 09:30 PM',
-    avgTicketSize: 115
-  },
-  activeLoan: null,
-  pastLoans: []
-};
+const runtimeState = {}; // keyed by merchantId: { walletBalance, activeLoan }
+
+function getMerchant(merchantId = 'MERCH_JAIPUR_0821') {
+  const base = MERCHANT_MAP[merchantId] || MERCHANT_MAP['MERCH_JAIPUR_0821'];
+  const state = runtimeState[base.merchantId] || {};
+  return {
+    ...base,
+    walletBalance: state.walletBalance ?? base.walletBalance,
+    activeLoan: state.activeLoan ?? base.activeLoan ?? null
+  };
+}
+
+// Keep backward-compat alias used by old code paths
+const merchantDB = getMerchant();
 
 // -------------------------------------------------------------
 // Cognee-Style Semantic Knowledge Graph Store
@@ -128,11 +146,26 @@ function logTelemetry(stage, message, latencyMs = Math.floor(Math.random() * 80)
 // -------------------------------------------------------------
 
 // 1. Get Merchant Overview & Telemetry
+// Supports ?id=MERCH_JAIPUR_0821 for multi-persona demo
 app.get('/api/merchant', (req, res) => {
+  const merchantId = req.query.id || 'MERCH_JAIPUR_0821';
+  const merchant = getMerchant(merchantId);
+  if (!merchant) {
+    return res.status(404).json({ success: false, message: 'Merchant not found' });
+  }
   res.json({
     success: true,
-    data: merchantDB,
-    telemetry: telemetryLogs.slice(0, 10)
+    data: merchant,
+    telemetry: telemetryLogs.slice(0, 10),
+    // Expose full persona list so UI can render selector
+    availablePersonas: MOCK_MERCHANTS.map(m => ({
+      merchantId: m.merchantId,
+      name: m.name,
+      businessName: m.businessName,
+      city: m._meta.city,
+      tier: m._meta.tier,
+      altScore: m._meta.altScore
+    }))
   });
 });
 
@@ -224,11 +257,11 @@ app.post('/api/aa/consent', (req, res) => {
 
 // 5. Autonomous Disbursal Engine
 app.post('/api/disburse', (req, res) => {
-  const { amount = 50000, tenureMonths = 6 } = req.body;
+  const { merchantId = 'MERCH_JAIPUR_0821', amount = 50000, tenureMonths = 6 } = req.body;
+  const merchant = getMerchant(merchantId);
 
   const txnId = `PTM-DISB-${Date.now().toString().slice(-8)}`;
-  merchantDB.walletBalance += amount;
-  merchantDB.activeLoan = {
+  const activeLoan = {
     loanId: `LN-${Date.now().toString().slice(-6)}`,
     principal: amount,
     tenureMonths,
@@ -237,20 +270,22 @@ app.post('/api/disburse', (req, res) => {
     status: 'ACTIVE'
   };
 
-  // Trigger n8n Webhook asynchronously (Fire and Forget)
+  // Update runtime state (non-destructive overlay on mock JSON)
+  runtimeState[merchant.merchantId] = {
+    walletBalance: (runtimeState[merchant.merchantId]?.walletBalance ?? merchant.walletBalance) + amount,
+    activeLoan
+  };
+
+  // Trigger n8n Webhook with retry (non-blocking)
   const webhookUrl = process.env.N8N_WEBHOOK_URL || 'https://pratham0105.app.n8n.cloud/webhook/disburse';
-  fetch(webhookUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      merchantId: 'merchant_1',
-      name: 'Ramesh Sharma',
-      loanAmount: amount,
-      txnId: txnId,
-      disbursedAt: merchantDB.activeLoan.disbursedAt,
-      event: 'DISBURSAL_SUCCESS'
-    })
-  }).catch(err => console.error('n8n Webhook failed:', err));
+  sendWebhookWithRetry(webhookUrl, {
+    merchantId: merchant.merchantId,
+    name: merchant.name,
+    loanAmount: amount,
+    txnId,
+    disbursedAt: activeLoan.disbursedAt,
+    event: 'DISBURSAL_SUCCESS'
+  }).catch(err => console.error('[n8n] Retry wrapper error:', err));
 
   // Add node and edge to Cognee Knowledge Graph
   const loanNodeId = `loan_${Date.now()}`;
@@ -266,32 +301,37 @@ app.post('/api/disburse', (req, res) => {
     relation: 'BORROWED'
   });
 
-  // Upgraded future limit edge
   knowledgeGraph.insights.push(
-    `Ramesh successfully took ₹${amount.toLocaleString('en-IN')} loan. Once 2 EMIs are paid on time, eligibility dynamically unlocks to ₹1,00,000.`
+    `${merchant.name} successfully took ₹${amount.toLocaleString('en-IN')} loan. Once 2 EMIs are paid on time, eligibility dynamically unlocks to ₹1,00,000.`
   );
 
   logTelemetry('NBFC_API_ALLOCATION', `Disbursal request cleared by Aditya Birla Capital API in 110ms.`);
   logTelemetry('DISBURSAL_COMPLETE', `₹${amount.toLocaleString('en-IN')} credited to Paytm Business Account. Ref: ${txnId}`, 95);
 
+  const updatedMerchant = getMerchant(merchant.merchantId);
   res.json({
     success: true,
     data: {
       txnId,
       amount,
-      updatedBalance: merchantDB.walletBalance,
-      creditedTo: 'Paytm Merchant Current Account (SBI 4821)',
+      updatedBalance: updatedMerchant.walletBalance,
+      creditedTo: `Paytm Merchant Current Account (${merchant.bankAccount.accountMasked})`,
       soundboxAnnouncement: `Paytm par ${amount === 50000 ? 'pachaas hazaar' : amount} rupaye prapt hue.`,
-      disbursedAt: merchantDB.activeLoan.disbursedAt,
-      activeLoan: merchantDB.activeLoan
+      disbursedAt: activeLoan.disbursedAt,
+      activeLoan
     }
   });
 });
 
-// 6. Reset Demo State
+// 6. Reset Demo State — clears runtime overlays for all or a specific merchant
 app.post('/api/reset', (req, res) => {
-  merchantDB.walletBalance = 3840;
-  merchantDB.activeLoan = null;
+  const { merchantId } = req.body || {};
+  if (merchantId && runtimeState[merchantId]) {
+    delete runtimeState[merchantId];
+  } else {
+    // Reset all
+    Object.keys(runtimeState).forEach(k => delete runtimeState[k]);
+  }
   knowledgeGraph.nodes = knowledgeGraph.nodes.filter(n => n.type !== 'ActiveLoan');
   knowledgeGraph.edges = knowledgeGraph.edges.filter(e => e.relation !== 'BORROWED');
   logTelemetry('DEMO_RESET', 'Merchant state and active loans reset to initial baseline.');
@@ -555,35 +595,27 @@ app.post('/api/insurance/issue', async (req, res) => {
   logTelemetry('INSURANCE_QUOTE', `Generated ${category} insurance quote. Premium: ₹${premium}/${billingCycle}.`, 85);
   logTelemetry('INSURANCE_ISSUED', `Policy ${policy_id} issued by ${partner} for coverage ${coverLabel}.`, 110);
   
-  // N8N Webhook Trigger for Insurance Automation
+  // N8N Webhook Trigger for Insurance Automation — with retry
   const webhookUrl = process.env.N8N_WEBHOOK_URL || 'https://pratham0105.app.n8n.cloud/webhook/disburse';
-  try {
-    console.log(`[n8n] Triggering Insurance Webhook for ${customer_id} (Policy: ${policy_id})`);
-    fetch(webhookUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        event: 'INSURANCE_POLICY_ISSUED',
-        merchantId: customer_id,
-        category,
-        policy_id,
-        mandate_id,
-        cover_amount: coverLabel,
-        premium_amount: premium,
-        billing_cycle: billingCycle,
-        partner,
-        customer_name: kyc.fullName || 'Ramesh Kumar',
-        customer_phone: kyc.mobileNumber || '9322019398',
-        pincode: kyc.pincode || '411014',
-        city: 'Pune, Maharashtra',
-        hospitals_in_city: 458,
-        status: 'POLICY_ACTIVE',
-        timestamp: new Date().toISOString()
-      })
-    }).catch(err => console.error('n8n webhook failed:', err));
-  } catch (e) {
-    console.error('[n8n] Webhook trigger failed', e.message);
-  }
+  console.log(`[n8n] Triggering Insurance Webhook for ${customer_id} (Policy: ${policy_id})`);
+  sendWebhookWithRetry(webhookUrl, {
+    event: 'INSURANCE_POLICY_ISSUED',
+    merchantId: customer_id,
+    category,
+    policy_id,
+    mandate_id,
+    cover_amount: coverLabel,
+    premium_amount: premium,
+    billing_cycle: billingCycle,
+    partner,
+    customer_name: kyc.fullName || 'Ramesh Kumar',
+    customer_phone: kyc.mobileNumber || '9322019398',
+    pincode: kyc.pincode || '411014',
+    city: 'Pune, Maharashtra',
+    hospitals_in_city: 458,
+    status: 'POLICY_ACTIVE',
+    timestamp: new Date().toISOString()
+  }).catch(err => console.error('[n8n] Insurance webhook retry wrapper error:', err));
 
   res.json({
     success: true,
