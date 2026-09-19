@@ -44,20 +44,20 @@ const PORT = process.env.PORT || 5001;
 app.use(cors());
 app.use(express.json());
 
-// Initialize DeepSeek Client (via OpenAI SDK)
+// Initialize Sarvam AI Client (via OpenAI SDK)
 let aiClient = null;
-if (process.env.DEEPSEEK_API_KEY) {
+if (process.env.SARVAM_API_KEY) {
   try {
     aiClient = new OpenAI({
-      baseURL: 'https://api.deepseek.com',
-      apiKey: process.env.DEEPSEEK_API_KEY
+      baseURL: 'https://api.sarvam.ai/v1',
+      apiKey: process.env.SARVAM_API_KEY
     });
-    console.log('✅ DeepSeek API Client initialized');
+    console.log('✅ Sarvam AI Client initialized');
   } catch (err) {
-    console.warn('⚠️ Could not initialize DeepSeek client:', err.message);
+    console.warn('⚠️ Could not initialize Sarvam AI client:', err.message);
   }
 } else {
-  console.log('ℹ️ Running in resilient demo mode (Set DEEPSEEK_API_KEY in .env)');
+  console.log('ℹ️ Running in resilient demo mode (Set SARVAM_API_KEY in .env)');
 }
 
 // Initialize Cognee memory graph SDK
@@ -338,7 +338,7 @@ app.post('/api/reset', (req, res) => {
   res.json({ success: true, message: 'Demo state reset successfully' });
 });
 
-// 7. Saarthi AI Chat & Voice Assistant (DeepSeek or Resilient Engine)
+// 7. Saarthi AI Chat & Voice Assistant (Sarvam AI or Resilient Engine)
 app.post('/api/agent/chat', async (req, res) => {
   const { message, language = 'hi', currentPage = 'Unknown', formFields = [] } = req.body;
 
@@ -353,7 +353,7 @@ app.post('/api/agent/chat', async (req, res) => {
       ).join('\n')
     : '';
 
-  // DeepSeek — full context-aware AI call
+  // Sarvam AI — full context-aware AI call
   if (aiClient) {
     try {
 const langMap = { hi: 'Hindi (in Devanagari script)', mr: 'Marathi', bn: 'Bengali', ta: 'Tamil', te: 'Telugu', en: 'English' };
@@ -397,7 +397,7 @@ ${formContext}
 8. For mismatch warnings (like address), reassure — explain that Paytm QR location data overrides it.`;
 
       const response = await aiClient.chat.completions.create({
-        model: 'deepseek-chat',
+        model: 'sarvam-instruct',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: message }
@@ -409,17 +409,17 @@ ${formContext}
       const replyText = response.choices[0].message.content?.trim() ||
         'Namaste Ramesh ji! Aapke QR transactions ke aadhar par aap ₹50,000 ke loan ke liye eligible hain.';
 
-      logTelemetry('AI_RESPONSE', `DeepSeek replied: "${replyText.substring(0, 60)}..."`, 120);
+      logTelemetry('AI_RESPONSE', `Sarvam AI replied: "${replyText.substring(0, 60)}..."`, 120);
 
       return res.json({
         success: true,
         reply: replyText,
         detectedIntent: lowerMsg.includes('loan') ? 'LOAN_REQUEST' : 'GENERAL_QUERY',
-        source: 'deepseek-chat'
+        source: 'sarvam-ai'
       });
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
-      console.error('DeepSeek call error:', errMsg);
+      console.error('Sarvam AI call error:', errMsg);
       // Fall through to deterministic engine
     }
   }

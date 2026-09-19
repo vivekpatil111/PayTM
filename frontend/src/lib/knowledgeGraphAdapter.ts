@@ -136,18 +136,18 @@ export class LocalCogneeAdapter implements KnowledgeGraphProvider {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 4. HuggingFaceCogneeAdapter — REAL API implementation using HF OpenAI Router
+// 4. SarvamAICogneeAdapter — REAL API implementation using Sarvam AI
 // ─────────────────────────────────────────────────────────────────────────────
 
-export class HuggingFaceCogneeAdapter implements KnowledgeGraphProvider {
-  readonly providerName = 'huggingface-cognee-adapter';
+export class SarvamAICogneeAdapter implements KnowledgeGraphProvider {
+  readonly providerName = 'sarvam-cognee-adapter';
 
   private memoryStore: Record<string, Array<{ text: string; timestamp: string; eventType?: string }>> = {};
   private nodes: GraphNode[] = [];
   private edges: GraphEdge[] = [];
   private insights: string[] = [];
 
-  constructor(private hfToken: string) {}
+  constructor(private sarvamApiKey: string) {}
 
   addNode(node: GraphNode): void {
     const exists = this.nodes.find(n => n.id === node.id);
@@ -169,20 +169,20 @@ export class HuggingFaceCogneeAdapter implements KnowledgeGraphProvider {
       if (!this.memoryStore[event.merchantId]) this.memoryStore[event.merchantId] = [];
       this.memoryStore[event.merchantId].push({ text: event.text, timestamp: new Date().toISOString() });
       
-      // Simulate Cognee Extraction by calling Hugging Face Router
+      // Simulate Cognee Extraction by calling Sarvam AI API
       const prompt = `Extract knowledge graph nodes and edges from this event text: "${event.text}".
       Return ONLY a JSON object with this schema: 
       { "nodes": [ { "id": "...", "label": "...", "type": "Merchant|ActiveLoan|etc" } ], 
         "edges": [ { "source": "...", "target": "...", "relation": "..." } ] }`;
 
-      const res = await fetch("https://router.huggingface.co/v1/chat/completions", {
+      const res = await fetch("https://api.sarvam.ai/v1/chat/completions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${this.hfToken}`
+          "Authorization": `Bearer ${this.sarvamApiKey}`
         },
         body: JSON.stringify({
-          model: "deepseek-ai/DeepSeek-V4.1-Flash:novita", // Using the exact model from your screenshot
+          model: "sarvam-instruct", 
           messages: [{ role: "user", content: prompt }],
           response_format: { type: "json_object" }
         })

@@ -1,6 +1,6 @@
 /**
  * Saarthi Local Knowledge Graph Engine
- * (Replaces @cognee/cognee-ts cloud SDK with a fully local DeepSeek-powered equivalent)
+ * (Replaces @cognee/cognee-ts cloud SDK with a fully local Sarvam AI-powered equivalent)
  * 100% reliable for demo — no external cloud dependency.
  */
 
@@ -11,23 +11,23 @@ import OpenAI from 'openai';
 // ─────────────────────────────────────────────
 const memoryStore = {};
 
-// DeepSeek client (same key aapne .env mein diya hai)
-let deepseek = null;
+// Sarvam AI client (same key aapne .env mein diya hai)
+let sarvamai = null;
 
 export const initCognee = async () => {
-  if (!process.env.DEEPSEEK_API_KEY) {
-    console.warn('⚠️  DEEPSEEK_API_KEY not set. Cognee running in pure-fallback mode.');
+  if (!process.env.SARVAM_API_KEY) {
+    console.warn('⚠️  SARVAM_API_KEY not set. Cognee running in pure-fallback mode.');
     return false;
   }
   try {
-    deepseek = new OpenAI({
-      baseURL: 'https://api.deepseek.com',
-      apiKey: process.env.DEEPSEEK_API_KEY,
+    sarvamai = new OpenAI({
+      baseURL: 'https://api.sarvam.ai/v1',
+      apiKey: process.env.SARVAM_API_KEY,
     });
-    console.log('✅ Saarthi Local Knowledge Graph (DeepSeek) initialized successfully.');
+    console.log('✅ Saarthi Local Knowledge Graph (Sarvam AI) initialized successfully.');
     return true;
   } catch (err) {
-    console.error('❌ DeepSeek init failed:', err.message);
+    console.error('❌ Sarvam AI init failed:', err.message);
     return false;
   }
 };
@@ -49,10 +49,10 @@ export const rememberMerchantHistory = async (merchantId, dataText) => {
 };
 
 /**
- * "Recall" — retrieves context-aware info using DeepSeek (or fallback)
+ * "Recall" — retrieves context-aware info using Sarvam AI (or fallback)
  */
 export const recallMerchantMemory = async (merchantId, query) => {
-  // Demo-safe fallback — always works even without DeepSeek
+  // Demo-safe fallback — always works even without Sarvam AI
   const hardcodedFallback =
     merchantId === 'MERCH_JAIPUR_0821'
       ? 'Ramesh previously repaid a ₹20,000 loan on time. Trust score upgraded to TIER_1. He is eligible for limit enhancement to ₹1,00,000 after 2 successful EMIs.'
@@ -65,12 +65,12 @@ export const recallMerchantMemory = async (merchantId, query) => {
       ? memories.map((m) => m.text).join('\n')
       : hardcodedFallback;
 
-  // If DeepSeek is available, generate a smart contextual answer
-  if (deepseek) {
+  // If Sarvam AI is available, generate a smart contextual answer
+  if (sarvamai) {
     try {
-      console.log(`🕸️ [Cognee-Local] DeepSeek recall for: "${query}"`);
-      const response = await deepseek.chat.completions.create({
-        model: 'deepseek-chat',
+      console.log(`🕸️ [Cognee-Local] Sarvam AI recall for: "${query}"`);
+      const response = await sarvamai.chat.completions.create({
+        model: 'sarvam-instruct',
         messages: [
           {
             role: 'system',
@@ -85,10 +85,10 @@ Answer the query concisely in 1-2 sentences. Focus on credit risk, loan eligibil
         ],
       });
       const answer = response.choices[0].message.content || hardcodedFallback;
-      console.log(`✅ [Cognee-Local] DeepSeek recall complete.`);
+      console.log(`✅ [Cognee-Local] Sarvam AI recall complete.`);
       return { success: true, data: answer };
     } catch (err) {
-      console.warn('⚠️ [Cognee-Local] DeepSeek recall failed, using fallback:', err.message);
+      console.warn('⚠️ [Cognee-Local] Sarvam AI recall failed, using fallback:', err.message);
     }
   }
 
