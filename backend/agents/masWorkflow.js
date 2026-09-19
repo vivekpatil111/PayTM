@@ -11,12 +11,12 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-// LLM Configuration with ZDR simulated headers (via ChatOpenAI tags/metadata)
+// LLM Configuration with Local Ollama (Zero Data Retention by design)
 const llm = new ChatOpenAI({
-  modelName: "sarvam-105b-conversations",
-  apiKey: process.env.SARVAM_API_KEY || "fallback_key",
+  modelName: "qwen2.5:1.5b",
+  apiKey: "ollama",
   configuration: {
-    baseURL: "https://api.sarvam.ai/v1",
+    baseURL: "http://127.0.0.1:11434/v1",
   },
   temperature: 0.7,
   tags: ["zero-data-retention", "no-training"]
