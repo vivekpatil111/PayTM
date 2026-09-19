@@ -5,9 +5,10 @@ export interface TraceEvent {
   timeOffset: number; // seconds from start
   icon: string;
   message: string;
-  type: 'info' | 'success' | 'warning' | 'progress' | 'header';
+  type: 'info' | 'success' | 'warning' | 'progress' | 'header' | 'agent_trace';
   progress?: number; // 0-100 for progress bars
   detail?: string;
+  traceIntent?: string;
 }
 
 const RAMESH_EVENTS: TraceEvent[] = [

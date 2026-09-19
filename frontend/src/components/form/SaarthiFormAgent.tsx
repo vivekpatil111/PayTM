@@ -2,8 +2,10 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { TraditionalForm } from './TraditionalForm';
 import { INITIAL_FORM_DATA, AUTOFILL_MERCHANTS, FormPage, ValidationState } from '../../lib/validationEngine';
 import { translate, SupportedLanguage, LANGUAGES } from '../../lib/translationEngine';
-import { Mic, MicOff, Sparkles, Send, Globe } from 'lucide-react';
+import { Mic, MicOff, Sparkles, Send, Globe, BrainCircuit, CheckCircle2, AlertCircle, RefreshCw, XCircle, ArrowRight, Play, Check, ShieldCheck, FileCheck2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { TraceEvent } from '../../lib/demoEngine';
+import { MultiAgentTrace } from '../agent/MultiAgentTrace';
 
 interface SaarthiFormAgentProps {
   onEvent: (event: TraceEvent) => void;
@@ -21,6 +23,7 @@ export const SaarthiFormAgent: React.FC<SaarthiFormAgentProps> = ({ onEvent, onA
     "Hi, I am Saarthi. Since you're logged into Paytm for Business, I can fetch most of your details securely from your ledgers and KYC. Tap the sparkle to start!"
   );
   const [chatInput, setChatInput] = useState('');
+  const [traceIntent, setTraceIntent] = useState<string | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [isSpeechSupported, setIsSpeechSupported] = useState(false);
   const recognitionRef = useRef<any>(null);
@@ -164,32 +167,41 @@ export const SaarthiFormAgent: React.FC<SaarthiFormAgentProps> = ({ onEvent, onA
     const targetAutofillData = AUTOFILL_MERCHANTS[currentMerchantKey];
 
     const fillNextField = () => {
+      if (currentFieldIdx >= INITIAL_FORM_DATA[pageIdx].fields.length) return;
+      
+      const field = INITIAL_FORM_DATA[pageIdx].fields[currentFieldIdx];
+      const targetData = targetAutofillData[field.id];
+
       setPages(prevPages => {
         const newPages = [...prevPages];
-        const page = newPages[pageIdx];
-        if (currentFieldIdx >= page.fields.length) return newPages;
-
-        const field = page.fields[currentFieldIdx];
-        const targetData = targetAutofillData[field.id];
+        // Deep copy the page and fields to avoid mutating state directly
+        const newPage = { ...newPages[pageIdx] };
+        newPage.fields = [...newPage.fields];
+        const newField = { ...newPage.fields[currentFieldIdx] };
 
         if (targetData) {
-          field.value = targetData.value;
-          field.source = targetData.source;
-          field.state = targetData.valid;
-          field.errorMessage = targetData.error;
-
-          onEvent({
-            id: `f_${field.id}_${Date.now()}`,
-            timeOffset: timeOffsetRef.current++,
-            icon: targetData.valid === ValidationState.VERIFIED ? '✓' : '⚠️',
-            message: `${field.label}: ${targetData.valid} (${targetData.source})`,
-            type: targetData.valid === ValidationState.VERIFIED ? 'success' : 'warning'
-          });
+          newField.value = targetData.value;
+          newField.source = targetData.source;
+          newField.state = targetData.valid;
+          newField.errorMessage = targetData.error;
         } else {
-          field.state = ValidationState.VERIFIED;
+          newField.state = ValidationState.VERIFIED;
         }
+        
+        newPage.fields[currentFieldIdx] = newField;
+        newPages[pageIdx] = newPage;
         return newPages;
       });
+
+      if (targetData) {
+        onEvent({
+          id: `f_${field.id}_${Date.now()}`,
+          timeOffset: timeOffsetRef.current++,
+          icon: targetData.valid === ValidationState.VERIFIED ? '✓' : '⚠️',
+          message: `${field.label}: ${targetData.valid} (${targetData.source})`,
+          type: targetData.valid === ValidationState.VERIFIED ? 'success' : 'warning'
+        });
+      }
 
       currentFieldIdx++;
       if (currentFieldIdx < INITIAL_FORM_DATA[pageIdx].fields.length) {
@@ -240,7 +252,7 @@ export const SaarthiFormAgent: React.FC<SaarthiFormAgentProps> = ({ onEvent, onA
     try {
       // Call backend with full form context for accurate AI response
       const currentPageData = pages[currentPageIndex];
-      const res = await fetch('http://localhost:5000/api/agent/chat', {
+      const res = await fetch('http://localhost:5001/api/agent/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -259,22 +271,51 @@ export const SaarthiFormAgent: React.FC<SaarthiFormAgentProps> = ({ onEvent, onA
       const data = await res.json();
       const reply = data.reply || "I'm here to help. Please try again.";
 
+      // Emit Privacy Traces if they exist
+      if (data.privacyTrace && Array.isArray(data.privacyTrace)) {
+        data.privacyTrace.forEach((trace: any, idx: number) => {
+          let icon = '🔒';
+          if (trace.action === 'PRIVACY_CONSENT') icon = '🔐';
+          if (trace.action === 'PRIVACY_ZDR') icon = '🛡️';
+
+          onEvent({
+            id: `privacy_${Date.now()}_${idx}`,
+            timeOffset: timeOffsetRef.current++,
+            icon: icon,
+            message: `${trace.details}`,
+            type: 'success'
+          });
+        });
+      }
+
       setAgentMessageKey(reply);
+      setTraceIntent(data.source || 'FALLBACK');
       speak(reply);
 
       onEvent({
         id: `chat_agent_${Date.now()}`,
         timeOffset: timeOffsetRef.current++,
         icon: '🤖',
-        message: `Saarthi (${data.source || 'ai'}): ${reply}`,
-        type: 'success'
+        message: `Saarthi: ${reply}`,
+        type: 'agent_trace',
+        traceIntent: data.source || 'FALLBACK'
       });
     } catch {
       const fallback = lang === 'en'
         ? "I'm here to help Ramesh ji! Ask me about the loan offer, form fields, or your eligibility."
         : "Ramesh ji, main aapki madad ke liye hoon! Loan, form, ya eligibility ke baare mein poochho.";
       setAgentMessageKey(fallback);
+      setTraceIntent('FALLBACK');
       speak(fallback);
+      
+      onEvent({
+        id: `chat_agent_${Date.now()}`,
+        timeOffset: timeOffsetRef.current++,
+        icon: '🤖',
+        message: `Saarthi: ${fallback}`,
+        type: 'agent_trace',
+        traceIntent: 'FALLBACK'
+      });
     } finally {
       setIsChatLoading(false);
     }
@@ -333,56 +374,59 @@ export const SaarthiFormAgent: React.FC<SaarthiFormAgentProps> = ({ onEvent, onA
         )}
 
         {/* Agent Message Row */}
-        <div className="px-4 pt-3 pb-2 flex items-start gap-3">
-          {/* Avatar */}
-          <div className="relative shrink-0 mt-0.5">
-            <div
-              className={`w-9 h-9 rounded-full flex items-center justify-center z-10 relative
-                bg-gradient-to-tr from-blue-600 to-cyan-400 shadow-lg shadow-blue-500/30
-                ${isAutofilling || isListening ? 'animate-pulse' : ''}`}
-            >
-              {isListening
-                ? <Mic className="w-4 h-4 text-white" />
-                : <Sparkles className="w-4 h-4 text-white" />
-              }
+        <div className="px-4 pt-3 pb-2 flex flex-col gap-2">
+          <div className="flex items-start gap-3">
+            {/* Avatar */}
+            <div className="relative shrink-0 mt-0.5">
+              <div
+                className={`w-9 h-9 rounded-full flex items-center justify-center z-10 relative
+                  bg-gradient-to-tr from-blue-600 to-cyan-400 shadow-lg shadow-blue-500/30
+                  ${isAutofilling || isListening ? 'animate-pulse' : ''}`}
+              >
+                {isListening
+                  ? <Mic className="w-4 h-4 text-white" />
+                  : <Sparkles className="w-4 h-4 text-white" />
+                }
+              </div>
+              {(isAutofilling || isListening) && (
+                <div className="absolute inset-0 bg-blue-400 rounded-full animate-ping opacity-20" />
+              )}
             </div>
-            {(isAutofilling || isListening) && (
-              <div className="absolute inset-0 bg-blue-400 rounded-full animate-ping opacity-20" />
+
+            {/* Text */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-0.5">
+                <span className="text-white text-[10px] font-black uppercase tracking-widest">Saarthi Agent</span>
+                {isAutofilling && (
+                  <span className="bg-blue-500 text-white text-[8px] px-1.5 py-0.5 rounded-full font-bold animate-pulse">
+                    AUTO-FILLING
+                  </span>
+                )}
+                {isListening && (
+                  <span className="bg-red-500 text-white text-[8px] px-1.5 py-0.5 rounded-full font-bold animate-pulse">
+                    LISTENING
+                  </span>
+                )}
+              </div>
+              <p className="text-slate-300 text-xs leading-snug line-clamp-2">
+                {translate(agentMessageKey, lang)}
+              </p>
+            </div>
+
+            {/* Sparkle trigger button (only on page 0 before start) */}
+            {!isAutofilling && currentPageIndex === 0 && (
+              <button
+                onClick={() => startAutofillForPage(0)}
+                title="Start Autofill"
+                className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center
+                  bg-blue-500/20 hover:bg-blue-500/40 border border-blue-500/40
+                  transition-colors"
+              >
+                <Sparkles className="w-4 h-4 text-blue-400" />
+              </button>
             )}
           </div>
-
-          {/* Text */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-0.5">
-              <span className="text-white text-[10px] font-black uppercase tracking-widest">Saarthi Agent</span>
-              {isAutofilling && (
-                <span className="bg-blue-500 text-white text-[8px] px-1.5 py-0.5 rounded-full font-bold animate-pulse">
-                  AUTO-FILLING
-                </span>
-              )}
-              {isListening && (
-                <span className="bg-red-500 text-white text-[8px] px-1.5 py-0.5 rounded-full font-bold animate-pulse">
-                  LISTENING
-                </span>
-              )}
-            </div>
-            <p className="text-slate-300 text-xs leading-snug line-clamp-2">
-              {translate(agentMessageKey, lang)}
-            </p>
-          </div>
-
-          {/* Sparkle trigger button (only on page 0 before start) */}
-          {!isAutofilling && currentPageIndex === 0 && (
-            <button
-              onClick={() => startAutofillForPage(0)}
-              title="Start Autofill"
-              className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center
-                bg-blue-500/20 hover:bg-blue-500/40 border border-blue-500/40
-                transition-colors"
-            >
-              <Sparkles className="w-4 h-4 text-blue-400" />
-            </button>
-          )}
+          
         </div>
 
         {/* Chat Input Bar */}

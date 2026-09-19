@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Merchant, UnderwritingData, KnowledgeGraphData, TelemetryLog, SaarthiStep } from '../../types';
 import { TraceEvent } from '../../lib/demoEngine';
+import { MultiAgentTrace } from '../agent/MultiAgentTrace';
 import { BrainCircuit, Activity, ShieldCheck, Landmark } from 'lucide-react';
 
 interface WebUnderwriterPortalProps {
@@ -99,7 +100,22 @@ export const WebUnderwriterPortal: React.FC<WebUnderwriterPortalProps> = ({
                 );
               }
 
-              // Info, Success, Warning
+              if (event.type === 'agent_trace') {
+                return (
+                  <div key={event.id} className="flex flex-col ml-8 border-l-2 border-slate-800 pl-3 py-1 animate-fadeIn">
+                    <div className="flex items-start gap-2 text-blue-400">
+                      <span className="w-5 text-center mt-0.5">{event.icon}</span>
+                      <span className="text-[10px] text-slate-500 w-12 shrink-0 mt-0.5">[{event.timeOffset.toString().padStart(2, '0')}:00]</span>
+                      <div className="flex-1">
+                        <p>{event.message}</p>
+                        <div className="mt-2">
+                          <MultiAgentTrace traceIntent={event.traceIntent || null} isVisible={true} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
               let colorClass = 'text-slate-300';
               if (event.type === 'success') colorClass = 'text-emerald-400';
               if (event.type === 'warning') colorClass = 'text-amber-400';

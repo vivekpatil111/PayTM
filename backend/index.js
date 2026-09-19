@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import OpenAI from 'openai';
 import { createRequire } from 'module';
 import { initCognee, rememberMerchantHistory, recallMerchantMemory } from './cogneeService.js';
+import { runMAS } from './agents/masWorkflow.js';
 
 dotenv.config();
 
@@ -353,74 +354,25 @@ app.post('/api/agent/chat', async (req, res) => {
       ).join('\n')
     : '';
 
-  // Sarvam AI — full context-aware AI call
-  if (aiClient) {
+  // Sarvam AI — Multi-Agent System (LangGraph)
+  if (process.env.SARVAM_API_KEY) {
     try {
-const langMap = { hi: 'Hindi (in Devanagari script)', mr: 'Marathi', bn: 'Bengali', ta: 'Tamil', te: 'Telugu', en: 'English' };
-const targetLang = langMap[language] || 'English';
+      const masResult = await runMAS(message, language, formContext, formFields);
+      const replyText = masResult.reply || 'नमस्ते रमेश जी! मैं आपकी कैसे सहायता कर सकता हूँ?';
 
-      const systemPrompt = `You are "Paytm Saarthi", a warm, intelligent, multilingual AI financial copilot embedded inside the Paytm for Business loan application form.
-
-## MERCHANT PROFILE (Pre-fetched from Paytm's secure backend)
-- Name: Ramesh Sharma
-- Business: Ramesh Kirana Store, Shop 14, Tonk Road, Jaipur, Rajasthan
-- Category: Grocery & Daily Essentials
-- Paytm UPI: ramesh.kirana@paytm | Joined: April 2023
-- Bank: SBI Account ending ••••4821 (IFSC: SBIN0004120) — Verified ✓
-- CIBIL Score: NONE (Thin-file / No formal credit history)
-- QR Transaction History (Last 6 months): 4,520 transactions
-- Avg Monthly GMV: ₹86,400 | MoM Growth: +14.2%
-- Unique Payer Ratio: 78.4% (fraud-free organic footfall)
-- Daily Settlements: 178 consecutive days — ZERO bounces
-- Paytm Wallet Balance: ₹3,840
-
-## PRE-APPROVED LOAN OFFER (Alternative Underwriting Score: 825/900)
-- Loan Amount: ₹50,000 (Max eligible: ₹1,00,000)
-- Interest Rate: 12% APR (Flat)
-- Tenure: 6 months | Monthly EMI: ₹8,830 | Daily deduction: ₹294
-- Processing Fee: ZERO (Paytm merchant benefit)
-- NBFC Partner: Aditya Birla Finance / SMFG India Credit
-- Disbursement: Instant → Paytm Business Wallet → SBI A/C
-
-## CURRENT FORM CONTEXT
-- Form Page: ${currentPage}
-${formContext}
-
-## YOUR BEHAVIOR RULES
-1. Be warm, empathetic, and conversational — like a trusted financial advisor from Bharat.
-2. Language: Reply in ${targetLang}. Use "Ramesh ji" as address. Keep it colloquial and respectful.
-3. Keep responses SHORT (2-3 sentences max) and ACTIONABLE.
-4. If a field is EMPTY or has an ERROR in the form context, proactively offer to help fill it.
-5. If user asks about eligibility, ALWAYS confirm based on the 4,520 QR transactions.
-6. If user asks about interest/EMI, give exact numbers.
-7. NEVER say you cannot help. ALWAYS find a way to assist.
-8. For mismatch warnings (like address), reassure — explain that Paytm QR location data overrides it.`;
-
-      const response = await aiClient.chat.completions.create({
-        model: 'sarvam-instruct',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: message }
-        ],
-        max_tokens: 200,
-        temperature: 0.7
-      });
-
-      const replyText = response.choices[0].message.content?.trim() ||
-        'Namaste Ramesh ji! Aapke QR transactions ke aadhar par aap ₹50,000 ke loan ke liye eligible hain.';
-
-      logTelemetry('AI_RESPONSE', `Sarvam AI replied: "${replyText.substring(0, 60)}..."`, 120);
+      logTelemetry('AI_RESPONSE', `MAS (${masResult.intent}) replied: "${replyText.substring(0, 60)}..."`, 120);
 
       return res.json({
         success: true,
         reply: replyText,
-        detectedIntent: lowerMsg.includes('loan') ? 'LOAN_REQUEST' : 'GENERAL_QUERY',
-        source: 'sarvam-ai'
+        detectedIntent: masResult.intent,
+        source: `mas-langgraph-${masResult.intent}`,
+        privacyTrace: masResult.privacyTrace || []
       });
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
-      console.error('Sarvam AI call error:', errMsg);
-      // Fall through to deterministic engine
+      console.error('MAS LangGraph execution error:', errMsg);
+      // Fall through to deterministic engine (Fallback Engine)
     }
   }
 
