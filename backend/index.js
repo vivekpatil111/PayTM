@@ -356,7 +356,7 @@ app.post('/api/agent/chat', async (req, res) => {
   // DeepSeek — full context-aware AI call
   if (aiClient) {
     try {
-const langMap = { hi: 'Hinglish/Hindi', mr: 'Marathi', bn: 'Bengali', ta: 'Tamil', te: 'Telugu', en: 'English' };
+const langMap = { hi: 'Hindi (in Devanagari script)', mr: 'Marathi', bn: 'Bengali', ta: 'Tamil', te: 'Telugu', en: 'English' };
 const targetLang = langMap[language] || 'English';
 
       const systemPrompt = `You are "Paytm Saarthi", a warm, intelligent, multilingual AI financial copilot embedded inside the Paytm for Business loan application form.
@@ -428,39 +428,39 @@ ${formContext}
   let reply = '';
   let actionRequired = null;
 
-  if (lowerMsg.includes('loan') || lowerMsg.includes('paise') || lowerMsg.includes('50,000') || lowerMsg.includes('chahiye') || lowerMsg.includes('credit')) {
+  if (lowerMsg.includes('loan') || lowerMsg.includes('paise') || lowerMsg.includes('50,000') || lowerMsg.includes('chahiye') || lowerMsg.includes('credit') || lowerMsg.includes('लोन')) {
     reply = language === 'hi'
-      ? 'Namaste Ramesh ji! Ramesh Kirana Store ke 4,520 QR transactions ke aadhar par aap ₹50,000 ke instant business loan ke liye eligible hain — ZERO processing fees ke saath. Kya main loan offer taiyar karun?'
+      ? 'नमस्ते रमेश जी! रमेश किराना स्टोर के 4,520 QR लेनदेन के आधार पर आप ₹50,000 के इंस्टेंट बिजनेस लोन के लिए पात्र हैं — शून्य (ZERO) प्रोसेसिंग फीस के साथ। क्या मैं लोन ऑफर तैयार करूँ?'
       : 'Namaste Ramesh ji! Based on 4,520 verified QR transactions of Ramesh Kirana Store, you are pre-approved for ₹50,000 at 12% APR with zero processing fee. Shall I prepare your offer?';
     actionRequired = 'SHOW_OFFER';
-  } else if (lowerMsg.includes('interest') || lowerMsg.includes('byaj') || lowerMsg.includes('emi') || lowerMsg.includes('kitna')) {
+  } else if (lowerMsg.includes('interest') || lowerMsg.includes('byaj') || lowerMsg.includes('emi') || lowerMsg.includes('kitna') || lowerMsg.includes('ब्याज')) {
     reply = language === 'hi'
-      ? 'Aapko sirf 12% annual interest rate milega. 6 mahine ke liye EMI ₹8,830/maah (ya ₹294/din auto-deduct). Koi hidden charges nahi hai Ramesh ji!'
+      ? 'आपको सिर्फ 12% वार्षिक ब्याज दर (annual interest rate) मिलेगी। 6 महीने के लिए ईएमआई ₹8,830/माह (या ₹294/दिन ऑटो-डिडक्ट) होगी। इसमें कोई छिपे हुए शुल्क (hidden charges) नहीं हैं रमेश जी!'
       : 'Your rate is 12% APR. For 6 months, EMI is ₹8,830/month or ₹294/day auto-deducted from settlements. Zero hidden charges!';
     actionRequired = 'EXPLAIN_TERMS';
-  } else if (lowerMsg.includes('address') || lowerMsg.includes('mismatch') || lowerMsg.includes('galat')) {
+  } else if (lowerMsg.includes('address') || lowerMsg.includes('mismatch') || lowerMsg.includes('galat') || lowerMsg.includes('पता') || lowerMsg.includes('गलत')) {
     reply = language === 'hi'
-      ? 'Aapke Aadhaar aur shop address mein thoda farq hai, par ghabrana nahi! Aapke Paytm QR location data se address verify ho gaya hai. Main ise approve kar raha hoon.'
+      ? 'आपके आधार और दुकान के पते में थोड़ा अंतर है, लेकिन घबराने की कोई बात नहीं है! आपके पेटीएम QR लोकेशन डेटा से पता सत्यापित (verify) हो गया है। मैं इसे स्वीकृत (approve) कर रहा हूँ।'
       : 'There is a minor mismatch between your Aadhaar and shop address. But your Paytm QR geo-location data confirms your business location — I have approved it!';
     actionRequired = 'RESOLVE_MISMATCH';
-  } else if (lowerMsg.includes('cibil') || lowerMsg.includes('score') || lowerMsg.includes('credit history')) {
+  } else if (lowerMsg.includes('cibil') || lowerMsg.includes('score') || lowerMsg.includes('credit history') || lowerMsg.includes('सिबिल')) {
     reply = language === 'hi'
-      ? 'Ramesh ji, aapka koi CIBIL score nahi hai — par yeh koi dikkat nahi! Hamara Alternative Underwriting Engine aapke 4,520 QR transactions dekh kar aapko 825/900 score deta hai. Aap TIER-1 eligible hain!'
+      ? 'रमेश जी, आपका कोई सिबिल (CIBIL) स्कोर नहीं है — लेकिन यह कोई समस्या नहीं है! हमारा वैकल्पिक अंडरराइटिंग इंजन आपके 4,520 QR लेनदेन को देखकर आपको 825/900 का स्कोर देता है। आप TIER-1 के लिए पात्र हैं!'
       : 'Ramesh ji, you have no CIBIL score — but that is not a problem! Our Alternative Underwriting Engine scored you 825/900 based on your QR transactions. You qualify for TIER-1 eligibility!';
     actionRequired = 'EXPLAIN_ALTERNATIVE_SCORING';
-  } else if (lowerMsg.includes('haan') || lowerMsg.includes('yes') || lowerMsg.includes('approve') || lowerMsg.includes('theek') || lowerMsg.includes('ok')) {
+  } else if (lowerMsg.includes('haan') || lowerMsg.includes('yes') || lowerMsg.includes('approve') || lowerMsg.includes('theek') || lowerMsg.includes('ok') || lowerMsg.includes('हाँ') || lowerMsg.includes('ठीक')) {
     reply = language === 'hi'
-      ? 'Dhanyawad Ramesh ji! Account Aggregator ke zariye SBI bank statement verify ho gaya hai. Aapka ₹50,000 ka loan approve — abhi disburse ho raha hai!'
+      ? 'धन्यवाद रमेश जी! अकाउंट एग्रीगेटर के माध्यम से SBI बैंक स्टेटमेंट सत्यापित हो गया है। आपका ₹50,000 का लोन स्वीकृत हो गया है — अभी ट्रांसफर (disburse) हो रहा है!'
       : 'Thank you Ramesh ji! Your SBI bank statement is verified via RBI Account Aggregator. ₹50,000 loan approved — disbursing now!';
     actionRequired = 'PROCEED_DISBURSAL';
-  } else if (lowerMsg.includes('help') || lowerMsg.includes('dikkat') || lowerMsg.includes('stuck') || lowerMsg.includes('samajh')) {
+  } else if (lowerMsg.includes('help') || lowerMsg.includes('dikkat') || lowerMsg.includes('stuck') || lowerMsg.includes('samajh') || lowerMsg.includes('मदद') || lowerMsg.includes('समझ')) {
     reply = language === 'hi'
-      ? 'Bilkul Ramesh ji! Aap mujhe batao kya problem hai — main form ke fields automatically fill kar sakta hoon aapke Paytm account se. Koi cheez unclear ho toh seedha poochho!'
+      ? 'बिल्कुल रमेश जी! आप मुझे बताएँ क्या समस्या है — मैं आपके पेटीएम खाते से फॉर्म के फ़ील्ड स्वचालित रूप से (automatically) भर सकता हूँ। अगर कुछ अस्पष्ट (unclear) हो तो बेझिझक पूछें!'
       : 'Of course Ramesh ji! Tell me what you need help with. I can auto-fill any field from your Paytm account data. Ask me anything about the form or the loan!';
     actionRequired = 'OFFER_HELP';
   } else {
     reply = language === 'hi'
-      ? 'Namaste Ramesh ji! Main aapka Paytm Saarthi hoon — loan, QR cashflow, EMI, ya form ke baare mein kuch bhi poochho. Main yahan hoon!'
+      ? 'नमस्ते रमेश जी! मैं आपका पेटीएम सारथी हूँ — लोन, QR कैशफ्लो, EMI, या फॉर्म के बारे में कुछ भी पूछें। मैं आपकी सहायता के लिए यहाँ हूँ!'
       : 'Namaste Ramesh ji! I am Paytm Saarthi, your AI financial copilot. Ask me about your loan offer, QR analytics, EMI details, or any form field!';
     actionRequired = 'GENERAL_GREETING';
   }
